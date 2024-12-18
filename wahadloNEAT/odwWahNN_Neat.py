@@ -1,19 +1,20 @@
-"""
-2-input XOR example with multiprocessing for genome evaluation.
-"""
-
 import os
 import neat
 import odwroconeWahadloModelNN_modul
 import odwroconeWahadloModelNN_modul_old
 import visualize
+import pickle
 from multiprocessing import Pool
+import itertools
 
-# Adjusted XOR inputs and outputs to match network expectations
-xor_inputs = [(0, 0, 0, 0), (0, 1, 0, 0), (1, 0, 0, 0), (1, 1, 0, 0)]
-xor_outputs = [(0,), (1,), (1,), (0,)]
+# Generowanie wszystkich kombinacji dla 6 wejść
+xor_inputs = list(itertools.product([0, 1], repeat=6))
 
-generations = 5
+# Generowanie wyjść na podstawie XOR
+xor_outputs = [(a ^ b ^ c ^ d, e ^ f) for (a, b, c, d, e, f) in xor_inputs]
+
+generations = 10
+
 def evaluate_genome(genome_data):
     """
     Function to evaluate a single genome.
@@ -27,8 +28,8 @@ def evaluate_genome(genome_data):
         sE = odwroconeWahadloModelNN_modul_old.odwroconeWahadloModelKx(net, False)
         
         # Compute fitness
-        #current_state = [cart_x, cart_vx, arm1_angle, arm1_vangle]
-        fitness = -10000 - (0.05 * abs(sE[0]) + 0.05 * abs(sE[1]) + abs(sE[2]) + 0.05 * abs(sE[3]))
+        # x=(cartX, cartVX, cartA, cartVA, arm2_A, arm2_VA)
+        fitness = -10000 - (0.05 * abs(sE[0]) + 0.05 * abs(sE[1]) + abs(sE[2]) + 0.05 * abs(sE[3]) + 0.2 * abs(sE[4]) + 0.2 * abs(sE[5]))
         return genome_id, fitness
     except Exception as e:
         print(f"Error evaluating genome {genome_id}: {e}")
@@ -56,6 +57,23 @@ def eval_genomes(genomes, config):
                 break
 
 
+def save_winner(winner, filename):
+    """
+    Save the best genome to a file.
+    """
+    with open(filename, 'wb') as f:
+        pickle.dump(winner, f)
+    print(f"Best genome saved to {filename}.")
+
+
+def load_winner(filename):
+    """
+    Load the best genome from a file.
+    """
+    with open(filename, 'rb') as f:
+        return pickle.load(f)
+
+
 def run(config_file):
     """
     Run the NEAT algorithm with the given configuration file.
@@ -81,6 +99,9 @@ def run(config_file):
     # Display the winning genome
     print('\nBest genome:\n{!s}'.format(winner))
 
+    # Save the best genome
+    save_winner(winner, 'best_genome.pkl')
+
     # Create and test the winning network
     net = neat.nn.FeedForwardNetwork.create(winner, config)
     odwroconeWahadloModelNN_modul_old.odwroconeWahadloModelKx(net, True)
@@ -91,21 +112,69 @@ def run(config_file):
         output = winner_net.activate(xi)
         print(f"input {xi}, expected output {xo}, got {output}")
 
-    # Check for checkpoint restoration
-    checkpoint_file = 'neat-checkpoint-4'
-    if os.path.exists(checkpoint_file):
-        print(f"Restoring from checkpoint: {checkpoint_file}")
-        restored_p = neat.Checkpointer.restore_checkpoint(checkpoint_file)
-        restored_p.run(eval_genomes, 10)  # Run additional 10 generations
-    else:
-        print(f"Checkpoint file '{checkpoint_file}' not found. Skipping restoration.")
 
+def replay(config_file, winner_file):
+    """
+    Replay a saved genome.
+    """
+    # Load configuration
+    config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
+                         neat.DefaultSpeciesSet, neat.DefaultStagnation,
+                         config_file)
+
+    # Load the best genome
+    winner = load_winner(winner_file)
+
+    # Display the loaded genome
+    print('\nLoaded genome:\n{!s}'.format(winner))
+
+    # Create and test the network
+    net = neat.nn.FeedForwardNetwork.create(winner, config)
+    odwroconeWahadloModelNN_modul_old.odwroconeWahadloModelKx(net, True)
+
+def resume_from_checkpoint(checkpoint_file, generations_to_run=generations):
+    """
+    Resume NEAT training from a given checkpoint.
+    """
+    # Odtwórz populację z checkpointu
+    print(f"Restoring from checkpoint: {checkpoint_file}")
+    population = neat.Checkpointer.restore_checkpoint(checkpoint_file)
+
+    # Dodaj reporterów, jeśli chcesz zobaczyć statystyki
+    population.add_reporter(neat.StdOutReporter(True))
+    stats = neat.StatisticsReporter()
+    population.add_reporter(stats)
+    population.add_reporter(neat.Checkpointer(10))  # Nadal zapisuj nowe checkpointy
+
+    # Kontynuuj proces uczenia przez określoną liczbę generacji
+    winner = population.run(eval_genomes, generations_to_run)
+
+    # Wyświetl najlepszego osobnika
+    print('\nBest genome after resuming:\n{!s}'.format(winner))
+    return winner
 
 if __name__ == '__main__':
     # Determine path to configuration file
     local_dir = os.path.dirname(__file__)
     config_path = os.path.join(local_dir, 'neat-config.txt')
+
     try:
-        run(config_path)
+        # Run evolution, replay genome, or resume from checkpoint
+        mode = input("Enter 'run', 'replay', or 'resume': ").strip().lower()
+        if mode == 'run':
+            run(config_path)
+        elif mode == 'replay':
+            replay(config_path, 'best_genome.pkl')
+        elif mode == 'resume':
+            # Prompt for checkpoint file name
+            checkpoint_file = input("Enter the checkpoint file name (e.g., 'neat-checkpoint-4'): ").strip()
+            if os.path.exists(checkpoint_file):
+                generations_to_run = int(input("Enter the number of generations to run: ").strip())
+                resume_from_checkpoint(checkpoint_file, generations_to_run)
+            else:
+                print(f"Checkpoint file '{checkpoint_file}' not found.")
+        else:
+            print("Invalid mode. Please enter 'run', 'replay', or 'resume'.")
     except Exception as e:
         print(f"Failed to run NEAT: {e}")
+

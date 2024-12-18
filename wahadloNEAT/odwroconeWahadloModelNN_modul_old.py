@@ -80,11 +80,11 @@ def odwroconeWahadloModelKx(net, isVis):
     eT=0
     cartX_1=340; #wartosc pozycji x z poprzedniego kroku
     cartA_1=0; #wartosc kata z poprzedniego kroku
-
+    arm2_A_1 = 0; 
 
     fps = 90
     dt = 1.0 / fps
-    sE = [0, 0, 0, 0] #suma bledow
+    sE = [0, 0, 0, 0, 0, 0] #suma bledow
     
     while running:
 
@@ -102,21 +102,24 @@ def odwroconeWahadloModelKx(net, isVis):
         cartX = shape.body.position[0]
         cartVX = (cartX-cartX_1)/dt
         cartA = wahadloShape.body.angle
+        arm2_A = wahadlo2Shape.body.angle
         cartVA = (cartA-cartA_1)/dt
+        arm2_VA = (arm2_A-arm2_A_1)/dt
         cartX_1=cartX
         cartA_1=cartA
+        arm2_A_1 = arm2_A
 
-        x=(cartX, cartVX, cartA, cartVA)
+        x=(cartX, cartVX, cartA, cartVA, arm2_A, arm2_VA)
         #print("x: ", x)
 
         #aplikujemy prawo sterowania w postaci sieci neuronowej
-        xw = [-150, 0, 0, 0]
-        e = [(x[0]-xw[0])/100, (x[1]-xw[1])/100, x[2]-xw[2], x[3]-xw[3]]
-        sE = [sE[0] + abs(e[0]), sE[1] + abs(e[1]), sE[2] + abs(e[2]), sE[3] + abs(e[3])]
+        xw = [-150, 0, 0, 0, 0, 0]
+        e = [(x[0]-xw[0])/100, (x[1]-xw[1])/100, x[2]-xw[2], x[3]-xw[3], x[4]-xw[4], x[5]-xw[5]]
+        sE = [sE[0] + abs(e[0]), sE[1] + abs(e[1]), sE[2] + abs(e[2]), sE[3] + abs(e[3]), sE[4] + abs(e[4]),sE[5] + abs(e[5])]
         uL=net.activate(e);
         u=2000*uL[0];
 
-        maxForce=2000;
+        maxForce=20000;
         if u>maxForce:
             u=maxForce;
 
@@ -125,7 +128,7 @@ def odwroconeWahadloModelKx(net, isVis):
 
         #wytracamy z punktu rownowagi
         if eT<0.03:
-            u=100
+            u=10
     
         #tutaj aplikujemy sile zewnetrzna
         body.apply_force_at_world_point((u, 0), body.position)
