@@ -1,169 +1,152 @@
-import sys
+# libraries
 from typing import List
-import numpy as np
-import pygame
-import time
+import pygame                   # Used for visualization and event handling
+import pymunk                   # Physics engine for simulating rigid body dynamics
+import pymunk.pygame_util       # Helper for drawing Pymunk objects using Pygame
+import pymunk.constraints       # Used for creating physical constraints
+from pymunk.vec2d import Vec2d  # Vector operations for 2D physics
 
-import pymunk
-import pymunk.pygame_util
-import pymunk.constraints
+def odwroconeWahadloModelKx(net, isVis: bool):
+    """
+    Simulates an inverted pendulum system controlled by a neural network.
 
-from pymunk.vec2d import Vec2d
-    
-def odwroconeWahadloModelKx(net, isVis):
-    width, height = 690, 600
+    Args:
+        net: The neural network used to control the system. It takes the error vector as input
+             and outputs the control signal to stabilize the pendulum.
+        isVis (bool): Whether to visualize the simulation (True = visualization enabled).
 
-    COLLTYPE_DEFAULT = 0
-    COLLTYPE_MOUSE = 1
-    COLLTYPE_BALL = 2
+    Returns:
+        List[float]: The cumulative error metrics of the system, where each value corresponds
+                     to the sum of absolute errors for different state variables.
+    """
 
-    running = True
-    clock = pygame.time.Clock()
+    # Constants
+    WIDTH, HEIGHT = 690, 600        # Dimensions of the simulation window (in pixels)
+    FPS = 90                        # Frames per second for the simulation
+    DT = 1.0 / FPS                  # Time step for the physics engine (in seconds)
+    MAX_FORCE = 20000               # Maximum allowable force that can be applied to the cart (in arbitrary units)
+    INIT_FORCE = 100                # Initial perturbation force applied to the cart at the start of the simulation (in arbitrary units)
+    GRAVITY = 900.0                 # Gravitational force in arbitrary units
 
+    # Target state
+    DESIRED_STATES = [-150, 0, 0, 0, 0, 0]
+    """
+    DESIRED_STATES represents the ideal state of the system:
+        [ cart_x -- cart_vx -- arm1_angle -- arm1_angular_velocity -- arm2_angle -- arm2_angular_velocity ]
+    cart_x                  --> Target horizontal position of the cart on the x-axis.
+    cart_vx                 --> Target velocity of the cart along the x-axis (should ideally be 0).
+    arm1_angle              --> Desired rotational angle of the first pendulum arm (upright position = 0).
+    arm1_angular_velocity   --> Desired angular velocity of the first pendulum arm (should ideally be 0).
+    arm2_angle              --> Desired rotational angle of the second pendulum arm (upright position = 0).
+    arm2_angular_velocity   --> Desired angular velocity of the second pendulum arm (should ideally be 0).
+    """
+
+    # Pygame and Pymunk initialization
     if isVis:
         pygame.init()
-        screen = pygame.display.set_mode((width, height))
-        draw_options = pymunk.pygame_util.DrawOptions(screen)
-        font = pygame.font.SysFont("Arial", 16)
+        screen = pygame.display.set_mode((WIDTH, HEIGHT))       # Set up the simulation window
+        draw_options = pymunk.pygame_util.DrawOptions(screen)   # Helper for drawing Pymunk objects
+        font = pygame.font.SysFont("Arial", 16)                 # Font for optional on-screen text
 
-    space = pymunk.Space()
-    space.gravity = Vec2d(0.0, 900.0)
+    # Physics Space setup
+    space = pymunk.Space()                  # Create a Pymunk physics space
+    space.gravity = Vec2d(0.0, GRAVITY)     # Set gravity to act downward
 
-    # Główna platforma
-    body = pymunk.Body(10, float('inf'))  # Duża masa dla stabilności platformy
-    body.position = 340, 400
-    shape = pymunk.Poly.create_box(
-        body, size=(50, 10), radius=1
-    )
-    shape.collision_type = COLLTYPE_DEFAULT
-    shape.filter = pymunk.ShapeFilter(group=1)
+    # Cart setup (platform on which the pendulum arms are mounted)
+    cart_body = pymunk.Body(10, float("inf"))                                   # Body with high mass (10 units) and infinite moment of inertia
+    cart_body.position = 340, 400                                               # Initial position of the cart
+    cart_shape = pymunk.Poly.create_box(cart_body, size=(50, 10), radius=1)     # Create a rectangular cart shape
+    cart_shape.filter = pymunk.ShapeFilter(group=1)                             # Assign a collision group to the cart
 
     move_joint = pymunk.GrooveJoint(
-        space.static_body, body, (670, 400), (10, 400), (0, 0)
-    )
+        space.static_body, cart_body, (670, 400), (10, 400), (0, 0)
+    )  # Groove joint keeps the cart constrained to the horizontal axis
 
-    # Pierwsze ramię wahadła
-    wahadlo = pymunk.Body(1, pymunk.moment_for_box(1, (10, 100)))  
-    wahadlo.position = 340, 350
-    wahadloShape = pymunk.Poly.create_box(
-        wahadlo, size=(10, 100), radius=1
-    )
-    wahadloShape.collision_type = COLLTYPE_DEFAULT
-    wahadloShape.filter = pymunk.ShapeFilter(group=1)
+    # First pendulum arm setup
+    arm1_body = pymunk.Body(1, pymunk.moment_for_box(1, (10, 100)))             # Body with mass 1 unit and calculated moment of inertia
+    arm1_body.position = 340, 350                                               # Initial position of the first pendulum arm
+    arm1_shape = pymunk.Poly.create_box(arm1_body, size=(10, 100), radius=1)    # Create a rectangular shape for the arm
+    arm1_shape.filter = pymunk.ShapeFilter(group=1)                             # Assign a collision group to the arm
+    arm1_joint = pymunk.constraints.PivotJoint(cart_body, arm1_body, (340, 400))# Pivot joint connects the arm to the cart
 
-    c = pymunk.constraints.PivotJoint(body, wahadlo, (340, 400))
+    # Second pendulum arm setup
+    arm2_body = pymunk.Body(1, pymunk.moment_for_box(1, (10, 50)))              # Body with mass 1 unit and calculated moment of inertia
+    arm2_body.position = 340, 275                                               # Initial position of the second pendulum arm
+    arm2_shape = pymunk.Poly.create_box(arm2_body, size=(10, 50), radius=1)     # Create a rectangular shape for the arm
+    arm2_shape.filter = pymunk.ShapeFilter(group=1)                             # Assign a collision group to the arm
+    arm2_joint = pymunk.constraints.PivotJoint(arm1_body, arm2_body, (340, 300))# Pivot joint connects the second arm to the first
 
+    # Add all physical elements to the simulation space
+    space.add(cart_body, cart_shape, move_joint, arm1_body, arm1_shape, arm1_joint, arm2_body, arm2_shape, arm2_joint)
 
-    # Drugie ramię wahadła
-    wahadlo2 = pymunk.Body(1, pymunk.moment_for_box(1, (10, 50)))  
-    wahadlo2.position = 340, 275
-    wahadlo2Shape = pymunk.Poly.create_box(
-        wahadlo2, size=(10, 50), radius=1
-    )
-    wahadlo2Shape.collision_type = COLLTYPE_DEFAULT
-    wahadlo2Shape.filter = pymunk.ShapeFilter(group=1)
+    # Simulation variables
+    running = True                  # Control flag for the simulation loop
+    clock = pygame.time.Clock()     # Clock to control simulation speed
+    elapsed_time = 0                # Tracks the total simulation time
+    previous_state = {              # Stores the state of the system in the previous frame
+        "cart_x": 340,
+        "arm1_angle": 0,
+        "arm2_angle": 0
+    }
+    cumulative_error = [0, 0, 0, 0, 0, 0]  # Tracks cumulative errors for each state variable
 
-    c2 = pymunk.constraints.PivotJoint(wahadlo, wahadlo2, (340, 300))
-    # c2.max_bias = 0
-    # c2.max_force = 5000000
-
-    # # Dodanie tłumienia w ruchach wahadła
-    # damp1 = pymunk.constraints.DampedRotarySpring(body, wahadlo, 0, 200, 10)
-    # damp2 = pymunk.constraints.DampedRotarySpring(wahadlo, wahadlo2, 0, 200, 10)
-
-
-    
-    # Dodanie elementów do przestrzeni
-    space.add(body, shape, wahadlo, wahadloShape, move_joint, c, wahadlo2, wahadlo2Shape, c2)
-
-    start_time = 0
-    eT=0
-    cartX_1=340; #wartosc pozycji x z poprzedniego kroku
-    cartA_1=0; #wartosc kata z poprzedniego kroku
-    arm2_A_1 = 0; 
-
-    fps = 90
-    dt = 1.0 / fps
-    sE = [0, 0, 0, 0, 0, 0] #suma bledow
-    
+    # Main simulation loop
     while running:
-
-        if isVis==True:
+        # Handle events (e.g., closing the window)
+        if isVis:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
 
-##        keys = pygame.key.get_pressed()
-##        left = int(keys[pygame.K_LEFT])
-##        right = int(keys[pygame.K_RIGHT])
+        # Extract current state of the system
+        cart_x = cart_shape.body.position[0]                                        # Horizontal position of the cart
+        cart_vx = (cart_x - previous_state["cart_x"]) / DT                          # Velocity of the cart
+        arm1_angle = arm1_shape.body.angle                                          # Angle of the first pendulum arm
+        arm2_angle = arm2_shape.body.angle                                          # Angle of the second pendulum arm
+        arm1_angular_velocity = (arm1_angle - previous_state["arm1_angle"]) / DT    # Angular velocity of the first arm
+        arm2_angular_velocity = (arm2_angle - previous_state["arm2_angle"]) / DT    # Angular velocity of the second arm
 
-        
-        #odczytujemy wektor stanu z silnika fizyki
-        cartX = shape.body.position[0]
-        cartVX = (cartX-cartX_1)/dt
-        cartA = wahadloShape.body.angle
-        arm2_A = wahadlo2Shape.body.angle
-        cartVA = (cartA-cartA_1)/dt
-        arm2_VA = (arm2_A-arm2_A_1)/dt
-        cartX_1=cartX
-        cartA_1=cartA
-        arm2_A_1 = arm2_A
+        # Update previous state
+        previous_state.update({
+            "cart_x": cart_x,
+            "arm1_angle": arm1_angle,
+            "arm2_angle": arm2_angle
+        })
 
-        x=(cartX, cartVX, cartA, cartVA, arm2_A, arm2_VA)
-        #print("x: ", x)
+        # Construct the state vector
+        state = (cart_x, cart_vx, arm1_angle, arm1_angular_velocity, arm2_angle, arm2_angular_velocity)
 
-        #aplikujemy prawo sterowania w postaci sieci neuronowej
-        xw = [-150, 0, 0, 0, 0, 0]
-        e = [(x[0]-xw[0])/100, (x[1]-xw[1])/100, x[2]-xw[2], x[3]-xw[3], x[4]-xw[4], x[5]-xw[5]]
-        sE = [sE[0] + abs(e[0]), sE[1] + abs(e[1]), sE[2] + abs(e[2]), sE[3] + abs(e[3]), sE[4] + abs(e[4]),sE[5] + abs(e[5])]
-        uL=net.activate(e);
-        u=2000*uL[0];
+        # Compute error between the current and desired states
+        error = [(state[i] - DESIRED_STATES[i]) / (100 if i < 2 else 1) for i in range(6)]
+        cumulative_error = [cumulative_error[i] + abs(error[i]) for i in range(6)]
 
-        maxForce=20000;
-        if u>maxForce:
-            u=maxForce;
+        # Neural network control: Calculate control signal based on error
+        control_signal = net.activate(error)
+        force = 2000 * control_signal[0]                # Scale the control signal to produce a force
+        force = max(min(force, MAX_FORCE), -MAX_FORCE)  # Limit the force within the allowable range
 
-        if u<-maxForce:
-            u=-maxForce;
+        # Apply an initial perturbation force at the start of the simulation
+        if elapsed_time < 0.03:
+            force = INIT_FORCE
 
-        #wytracamy z punktu rownowagi
-        if eT<0.03:
-            u=10
-    
-        #tutaj aplikujemy sile zewnetrzna
-        body.apply_force_at_world_point((u, 0), body.position)
+        # Apply the computed force to the cart
+        cart_body.apply_force_at_world_point((force, 0), cart_body.position)
 
-        #alfaVector=wahadloShape.body.rotation_vector;
-        #alfa = np.arctan2(alfaVector[1], alfaVector[0])
-        #alfaDegree = np.mod(np.degrees(alfa), 360)
-        #print("x_wozka:", shape.body.position[0], "\trotation:", alfaDegree)
-        
+        # Update the physics simulation
+        space.step(DT)
 
-        ### Draw stuff
-        #nie chce miec wyswietlania w trakcie symulacji, zeby dzialalo szybciej
-        if isVis==True:
-            ### Clear screen
-            screen.fill(pygame.Color("white"))
-            space.debug_draw(draw_options) 
+        # Visualization (if enabled)
+        if isVis:
+            screen.fill(pygame.Color("white"))  # Clear the screen
+            space.debug_draw(draw_options)      # Draw all elements in the space
+            pygame.display.flip()               # Update the display
+            clock.tick(FPS)                     # Maintain the desired FPS
 
-        ### Update physics
-        space.step(dt)
-        
-        if isVis==True:
-            #print("x: ", x)
-            print("u: ", u)
-            pygame.display.flip()
-            clock.tick(fps)
+        # Increment elapsed simulation time
+        elapsed_time += DT
 
-        eT+=dt;
-
-        if eT > 15:
+        # Stop the simulation after 15 seconds
+        if elapsed_time > 15:
             running = False
-            #if isVis==False:
-                #print("real time elapsed:", time.time()-start) 
-                #print("total time:", eT)
-                #print("error sum: ", sE)
 
-    return sE
-
-
+    return cumulative_error
