@@ -13,8 +13,7 @@ This project implements an inverted pendulum simulation controlled by a neural n
 ## Installation
 1. Clone the repository:
    ```bash
-   git clone <repository_url>
-   cd <repository_folder>
+   git clone https://github.com/Apewona/pendulumV2/
    ```
 2. Install dependencies:
    ```bash
@@ -27,7 +26,7 @@ This project implements an inverted pendulum simulation controlled by a neural n
 ### Running the Application
 Run the main script using Python:
 ```bash
-python <main_script_name>.py
+python odwWahNN_Neat.py
 ```
 This launches the graphical interface (GUI).
 
@@ -72,7 +71,7 @@ The NEAT configuration file (`neat-config.txt`) defines parameters for the NEAT 
 ---
 
 ## File Descriptions
-- **`<main_script_name>.py`**: Main script containing the GUI and logic for evolution management.
+- **`odwWahNN_Neat.py`**: Main script containing the GUI and logic for evolution management.
 - **`odwroconeWahadloModelNN_modul_old.py`**: Contains the `odwroconeWahadloModelKx` function, which simulates the inverted pendulum.
 - **`neat-config.txt`**: Configuration file for NEAT algorithm.
 - **Saved Files**:
@@ -87,13 +86,4 @@ The NEAT configuration file (`neat-config.txt`) defines parameters for the NEAT 
 3. The application is designed for educational purposes and demonstration of neural network optimization.
 
 ---
-
-## License
-This project is licensed under the MIT License. See the `LICENSE` file for details.
-
----
-
-## Acknowledgments
-- [Pymunk](http://www.pymunk.org/) for physics simulation.
-- [NEAT-Python](https://neat-python.readthedocs.io/en/latest/) for neural network evolution.
 
