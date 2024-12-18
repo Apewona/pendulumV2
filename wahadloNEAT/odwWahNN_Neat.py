@@ -5,6 +5,7 @@
 import os
 import neat
 import odwroconeWahadloModelNN_modul
+import odwroconeWahadloModelNN_modul_old
 import visualize
 from multiprocessing import Pool
 
@@ -12,7 +13,7 @@ from multiprocessing import Pool
 xor_inputs = [(0, 0, 0, 0), (0, 1, 0, 0), (1, 0, 0, 0), (1, 1, 0, 0)]
 xor_outputs = [(0,), (1,), (1,), (0,)]
 
-generations = 1000
+generations = 5
 def evaluate_genome(genome_data):
     """
     Function to evaluate a single genome.
@@ -23,9 +24,10 @@ def evaluate_genome(genome_data):
         net = neat.nn.FeedForwardNetwork.create(genome, config)
         
         # Evaluate the network on the custom module
-        sE = odwroconeWahadloModelNN_modul.odwroconeWahadloModelKx(net, False)
+        sE = odwroconeWahadloModelNN_modul_old.odwroconeWahadloModelKx(net, False)
         
         # Compute fitness
+        #current_state = [cart_x, cart_vx, arm1_angle, arm1_vangle]
         fitness = -10000 - (0.05 * abs(sE[0]) + 0.05 * abs(sE[1]) + abs(sE[2]) + 0.05 * abs(sE[3]))
         return genome_id, fitness
     except Exception as e:
@@ -81,7 +83,7 @@ def run(config_file):
 
     # Create and test the winning network
     net = neat.nn.FeedForwardNetwork.create(winner, config)
-    odwroconeWahadloModelNN_modul.odwroconeWahadloModelKx(net, True)
+    odwroconeWahadloModelNN_modul_old.odwroconeWahadloModelKx(net, True)
 
     print('\nOutput:')
     winner_net = neat.nn.FeedForwardNetwork.create(winner, config)
