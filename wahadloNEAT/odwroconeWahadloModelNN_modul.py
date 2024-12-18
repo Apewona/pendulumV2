@@ -1,4 +1,5 @@
 import sys
+import math
 from typing import List
 import numpy as np
 import pygame
@@ -16,7 +17,8 @@ def odwroconeWahadloModelKx(net, isVis):
     ARM1_MASS = 5
     ARM1_INERTIA = 0.1
     MAX_FORCE = 20000
-    DESIRED_STATE = [150, 0, 0, 0]  # Desired cart position and angles
+    #current_state = [cart_x, cart_vx, arm1_angle, arm1_vangle]
+    DESIRED_STATE = [0, 0, 0, 0]  # Desired cart position and angles
     ARM1_L = 75
 
     # Collision group constants
