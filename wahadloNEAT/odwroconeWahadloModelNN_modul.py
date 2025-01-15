@@ -12,13 +12,13 @@ def odwroconeWahadloModelKx(net, isVis):
     width, height = 690, 600
 
     # Physics constants
-    GRAVITY = 900.0
+    GRAVITY = 500.0
     CART_MASS = 1.0
     ARM1_MASS = 5
     ARM1_INERTIA = 0.1
     MAX_FORCE = 20000
     #current_state = [cart_x, cart_vx, arm1_angle, arm1_vangle]
-    DESIRED_STATE = [0, 0, 0, 0]  # Desired cart position and angles
+    DESIRED_STATE = [50, 0, 0, 0]  # Desired cart position and angles
     ARM1_L = 75
 
     # Collision group constants

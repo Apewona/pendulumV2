@@ -138,7 +138,7 @@ def resume_from_checkpoint(checkpoint_file, generations_to_run):
     population.add_reporter(neat.StdOutReporter(True))
     stats = neat.StatisticsReporter()
     population.add_reporter(stats)
-    population.add_reporter(neat.Checkpointer(10))
+    population.add_reporter(neat.Checkpointer(200))
 
     winner = population.run(eval_genomes, generations_to_run)
     print('\nBest genome after resuming:\n{!s}'.format(winner))
