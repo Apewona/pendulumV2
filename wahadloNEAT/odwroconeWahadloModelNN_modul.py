@@ -12,7 +12,7 @@ def odwroconeWahadloModelKx(net, isVis):
     width, height = 690, 600
 
     # Physics constants
-    GRAVITY = 500.0
+    GRAVITY = 100.0
     CART_MASS = 1.0
     ARM1_MASS = 5
     ARM1_INERTIA = 0.1

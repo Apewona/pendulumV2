@@ -26,7 +26,7 @@ def odwroconeWahadloModelKx(net, isVis: bool):
     DT = 1.0 / FPS                  # Time step for the physics engine (in seconds)
     MAX_FORCE = 20000               # Maximum allowable force that can be applied to the cart (in arbitrary units)
     INIT_FORCE = 100                # Initial perturbation force applied to the cart at the start of the simulation (in arbitrary units)
-    GRAVITY = 900.0                 # Gravitational force in arbitrary units
+    GRAVITY = 100.0                 # Gravitational force in arbitrary units
 
     # Target state
     DESIRED_STATES = [-150, 0, 0, 0, 0, 0]
