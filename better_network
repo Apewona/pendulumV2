@@ -1,0 +1,17 @@
+digraph {
+	rankdir=LR
+	"x[5]" [fillcolor=lightblue shape=circle style=filled]
+	"x[4]" [fillcolor=lightblue shape=circle style=filled]
+	"x[3]" [fillcolor=lightblue shape=circle style=filled]
+	"x[2]" [fillcolor=lightblue shape=circle style=filled]
+	"x[1]" [fillcolor=lightblue shape=circle style=filled]
+	"x[0]" [fillcolor=lightblue shape=circle style=filled]
+	"y[0]" [fillcolor=lightgreen shape=circle style=filled]
+	"y[1]" [fillcolor=lightgreen shape=circle style=filled]
+	38565 [fillcolor=lightyellow shape=circle style=filled]
+	"x[2]" -> "y[0]" [label=-1.17 color=red penwidth=2.3421123467346083 style=solid]
+	"x[4]" -> "y[0]" [label=-0.99 color=red penwidth=1.9838984930694292 style=solid]
+	"x[3]" -> 38565 [label=1.61 color=green penwidth=3.2142018292479975 style=solid]
+	38565 -> "y[1]" [label=2.38 color=green penwidth=4.764557653038839 style=solid]
+	"y[0]" -> 38565 [label=-0.88 color=red penwidth=1.7571077728232896 style=solid]
+}

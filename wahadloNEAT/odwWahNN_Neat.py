@@ -103,11 +103,6 @@ def run(config_file):
     net = neat.nn.FeedForwardNetwork.create(winner, config)
     odwroconeWahadloModelNN_modul_old.odwroconeWahadloModelKx(net, True)
 
-    print('\nOutput:')
-    for xi, xo in zip(xor_inputs, xor_outputs):
-        output = net.activate(xi)
-        print(f"input {xi}, expected output {xo}, got {output}")
-
 def replay(config_file, winner_file):
     """
     Replay the simulation using a saved genome.

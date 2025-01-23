@@ -26,10 +26,11 @@ def odwroconeWahadloModelKx(net, isVis: bool):
     DT = 1.0 / FPS                  # Time step for the physics engine (in seconds)
     MAX_FORCE = 20000               # Maximum allowable force that can be applied to the cart (in arbitrary units)
     INIT_FORCE = 100                # Initial perturbation force applied to the cart at the start of the simulation (in arbitrary units)
-    GRAVITY = 100.0                 # Gravitational force in arbitrary units
-
+    GRAVITY = 750.0                 # Gravitational force in arbitrary units
+    L1 = 100                        # First arm length
+    L2 = 75                         # Second arm length
     # Target state
-    DESIRED_STATES = [-150, 0, 0, 0, 0, 0]
+    DESIRED_STATES = [50, 0, 0, 0, 0, 0]
     """
     DESIRED_STATES represents the ideal state of the system:
         [ cart_x -- cart_vx -- arm1_angle -- arm1_angular_velocity -- arm2_angle -- arm2_angular_velocity ]
@@ -65,16 +66,16 @@ def odwroconeWahadloModelKx(net, isVis: bool):
     # First pendulum arm setup
     arm1_body = pymunk.Body(1, pymunk.moment_for_box(1, (10, 100)))             # Body with mass 1 unit and calculated moment of inertia
     arm1_body.position = 340, 350                                               # Initial position of the first pendulum arm
-    arm1_shape = pymunk.Poly.create_box(arm1_body, size=(10, 100), radius=1)    # Create a rectangular shape for the arm
+    arm1_shape = pymunk.Poly.create_box(arm1_body, size=(10, L1), radius=1)    # Create a rectangular shape for the arm
     arm1_shape.filter = pymunk.ShapeFilter(group=1)                             # Assign a collision group to the arm
     arm1_joint = pymunk.constraints.PivotJoint(cart_body, arm1_body, (340, 400))# Pivot joint connects the arm to the cart
 
     # Second pendulum arm setup
     arm2_body = pymunk.Body(1, pymunk.moment_for_box(1, (10, 50)))              # Body with mass 1 unit and calculated moment of inertia
-    arm2_body.position = 340, 275                                               # Initial position of the second pendulum arm
-    arm2_shape = pymunk.Poly.create_box(arm2_body, size=(10, 50), radius=1)     # Create a rectangular shape for the arm
+    arm2_body.position = 340, (400-L1) - L2/2                                              # Initial position of the second pendulum arm
+    arm2_shape = pymunk.Poly.create_box(arm2_body, size=(10, L2), radius=1)     # Create a rectangular shape for the arm
     arm2_shape.filter = pymunk.ShapeFilter(group=1)                             # Assign a collision group to the arm
-    arm2_joint = pymunk.constraints.PivotJoint(arm1_body, arm2_body, (340, 300))# Pivot joint connects the second arm to the first
+    arm2_joint = pymunk.constraints.PivotJoint(arm1_body, arm2_body, (340, 400 - L1))# Pivot joint connects the second arm to the first
 
     # Add all physical elements to the simulation space
     space.add(cart_body, cart_shape, move_joint, arm1_body, arm1_shape, arm1_joint, arm2_body, arm2_shape, arm2_joint)
@@ -146,7 +147,7 @@ def odwroconeWahadloModelKx(net, isVis: bool):
         elapsed_time += DT
 
         # Stop the simulation after 15 seconds
-        if elapsed_time > 15:
+        if elapsed_time > 45:
             running = False
 
     return cumulative_error
